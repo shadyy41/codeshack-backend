@@ -15,13 +15,15 @@ app.use(cors())
 
 const rooms = []//Room -> [Sockets]
 
-const socketToRoom = [] //Socket -> Room
+const userData = [{}]//socketId of user, name
 
 io.on('connection', socket => {
-  socket.on("join_room", roomID => {
+  socket.on("join_room", ({roomID, userName}) => {
+    if(!userName || userName.length===0) userName = "Anonymous"
+
     if(!rooms[roomID] || !rooms[roomID].length){
       rooms[roomID] = [socket.id]
-      socketToRoom[socket.id] = roomID
+      userData[socket.id] = {userName, roomID}
       return
     }
     let len = rooms[roomID].length
@@ -30,25 +32,32 @@ io.on('connection', socket => {
       socket.emit('room_full')
     }
     else if(len==1){
-      const peer = rooms[roomID][0]
+      const peerID = rooms[roomID][0]
+      const {userName} = userData[peerID]
+      const peerName = userName
       rooms[roomID].push(socket.id)
-      socketToRoom[socket.id] = roomID
-      socket.emit("peer", peer)
+      userData[socket.id] = {userName, roomID}
+      socket.emit("peer", {peerID, peerName})
     }
   })
 
-  socket.on("sending_signal", payload => {
-    io.to(payload.userToSignal).emit('user_joined', { signal: payload.signal, callerID: payload.callerID });
+  socket.on("sending_signal", ({userToSignal, signal, callerID, callerName}) => {
+    io.to(userToSignal).emit('user_joined', { signal, callerID, callerName })
   })
 
-  socket.on("returning_signal", payload => {
-    io.to(payload.callerID).emit('receiving_returned_signal', { signal: payload.signal, id: socket.id });
+  socket.on("returning_signal", ({callerID, signal}) => {
+    io.to(callerID).emit('receiving_returned_signal', { signal: signal, id: socket.id });
+  })
+
+  socket.on("run_code", ({roomID, code})=>{
+    console.log(code)
+    socket.emit("output", {stdout: "Output", stderr: "Error"})
   })
 
   socket.on('disconnect', () => { /* Remove user from room */
-    const roomID = socketToRoom[socket.id]
+    if(!userData[socket.id]) return
+    const {roomID, userName} = userData[socket.id]
     if(rooms[roomID]) rooms[roomID] = rooms[roomID].filter(id => id !== socket.id)
-    socketToRoom[socket.id] = ''
   })
 
 });
