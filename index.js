@@ -49,11 +49,6 @@ io.on('connection', socket => {
     io.to(callerID).emit('receiving_returned_signal', { signal: signal, id: socket.id });
   })
 
-  socket.on("run_code", ({roomID, code})=>{
-    console.log(code)
-    socket.emit("output", {stdout: "Output", stderr: "Error"})
-  })
-
   socket.on('disconnect', () => { /* Remove user from room */
     if(!userData[socket.id]) return
     const {roomID, userName} = userData[socket.id]
