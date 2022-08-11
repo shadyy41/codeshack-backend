@@ -13,6 +13,10 @@ const io = require("socket.io")(server, {
 
 app.use(cors())
 
+app.get("/", (req, res)=>{
+  res.send("I am awake")
+})
+
 const rooms = []//Room -> [Sockets]
 
 const userData = [{}]//socketId of user, name
